@@ -1,0 +1,69 @@
+# This is a basic workflow that is manually triggered
+
+name: mkbootimg
+
+# Controls when the action will run. Workflow runs when manually triggered using the UI
+# or API.
+on: [push,workflow_dispatch]
+
+jobs:
+  mkbootimg:
+    runs-on: ubuntu-18.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Initialization environment
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y git openjdk-8-jdk unzip zip
+
+      - name: compile
+        run: |
+          git clone --depth=1 https://github.com/topjohnwu/FrankeNDK.git
+          export PATH=${PATH}:${{ github.workspace }}/FrankeNDK
+          ndk-build NDK_DEBUG=0 APP_ABI=all
+          date=$(date +"%y%m%d")
+          echo "date=$(date +%y%m%d)" >> $GITHUB_ENV
+          zip mkbootimg-arm64-v8a-$date.zip libs/arm64-v8a/mkbootimg
+          zip mkbootimg-armeabi-v7a-$date.zip libs/armeabi-v7a/mkbootimg
+          zip mkbootimg-x86_64-$date.zip libs/x86_64/mkbootimg
+          zip mkbootimg-x86-$date.zip libs/x86/mkbootimg
+          zip unpackbootimg-arm64-v8a-$date.zip libs/arm64-v8a/unpackbootimg
+          zip unpackbootimg-armeabi-v7a-$date.zip libs/armeabi-v7a/unpackbootimg
+          zip unpackbootimg-x86_64-$date.zip libs/x86_64/unpackbootimg
+          zip unpackbootimg-x86-$date.zip libs/x86/unpackbootimg
+          ls
+
+      - name: Upload to Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: mkbootimg
+          path: |
+            libs/
+          retention-days: 7
+
+      - name: Upload mkbootimg to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            mkbootimg-arm64-v8a-${{ env.date }}.zip
+            mkbootimg-armeabi-v7a-${{ env.date }}.zip
+            mkbootimg-x86_64-${{ env.date }}.zip
+            mkbootimg-x86-${{ env.date }}.zip
+          tag_name: mkbootimg-${{ env.date }}
+          body: 使用FrankeNDK编译
+          token: ${{ github.token }}
+
+      - name: Upload unpackbootimg to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            unpackbootimg-arm64-v8a-${{ env.date }}.zip
+            unpackbootimg-armeabi-v7a-${{ env.date }}.zip
+            unpackbootimg-x86_64-${{ env.date }}.zip
+            unpackbootimg-x86-${{ env.date }}.zip
+          tag_name: unpackbootimg-${{ env.date }}
+          body: 使用FrankeNDK编译
+          token: ${{ github.token }}
